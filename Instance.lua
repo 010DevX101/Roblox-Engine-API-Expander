@@ -41,8 +41,11 @@ end
 
 function instance:GetDescendants(i : Instance)
 	local descendants = {}
-	for _,descendant in pairs(i:GetChildren(true)) do
-		table.insert(descendants, descendant)
+	for _,child in pairs(i:GetChildren()) do
+		table.insert(descendants, child)
+		for _,descendant in pairs(instance:GetDescendants(child)) do
+			table.insert(descendants, descendant)
+		end
 	end
 	return descendants
 end
