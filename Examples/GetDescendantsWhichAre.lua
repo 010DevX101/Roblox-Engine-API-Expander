@@ -1,3 +1,4 @@
 local Instances = require(script.Parent.Parent)
-local BaseParts = Instances:GetDescendantsWhichAre(workspace, "BasePart")
+local workspace = Instances:Register(workspace)
+local BaseParts = workspace:GetDescendantsWhichAre("BasePart")
 print(BaseParts)

@@ -1,6 +1,6 @@
-local Rig = workspace.Rig
 local Instances = require(script.Parent.Parent)
+local Rig = Instances:Register(workspace.Rig)
 
-local Humanoid = Instances:WaitForChildWhichIsA(Rig, "Humanoid") -- If timeOut is unspecified it'll default to 5
-local BasePart = Instances:WaitForChildWhichIsA(Rig, "BasePart", 15)
+local Humanoid = Rig:WaitForChildWhichIsA("Humanoid") -- If timeOut is unspecified it'll default to 5
+local BasePart = Rig:WaitForChildWhichIsA("BasePart", 15)
 print(Humanoid, BasePart)
