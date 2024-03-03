@@ -1,5 +1,6 @@
 # Roblox Engine API Expander
 ![version](https://img.shields.io/badge/version-1.0.0-yellow)
+<a href="https://devforum.roblox.com/t/roblox-engine-api-expander-v2/2863874">![devforum](https://img.shields.io/badge/docs-devforum-blue)
 <a href="https://create.roblox.com/store/asset/16611623974">![model](https://img.shields.io/badge/model-marketplace-green)</a>
 <br>
 <br>
