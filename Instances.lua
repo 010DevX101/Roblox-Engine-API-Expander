@@ -1,5 +1,6 @@
 local API = {}
 
+local Signal = require(script.GoodSignal)
 local HttpService = game:GetService("HttpService")
 local Url = "https://raw.githubusercontent.com/MaximumADHD/Roblox-Client-Tracker/roblox/API-Dump.json"
 
@@ -7,7 +8,7 @@ function GetMembers(instance : Instance)
 	local members = {}
 	local success, result = pcall(HttpService.GetAsync, HttpService, Url)
 	if not success then
-		warn("HTTP requests are disabled, using local API dump, may be old.")
+		warn("HTTP requests are disabled.")
 		return
 	end
 	result = HttpService:JSONDecode(result)
@@ -31,7 +32,12 @@ end
 
 function API:Register(i : Instance)
 	local Classes = {}
-	for _,member in pairs(GetMembers(i)) do
+	local Parent : Instance? = i.Parent
+	local Members = GetMembers(i)
+	if not Members then
+		return Classes
+	end
+	for _,member in pairs(Members) do
 		if member.MemberType == "Function" then
 			Classes[member.Name] = function(self, ...)
 				return i[member.Name](i, ...)
@@ -40,6 +46,14 @@ function API:Register(i : Instance)
 			Classes[member.Name] = i[member.Name]
 		end
 	end
+	Classes["SiblingRemoved"] = Signal.new()
+	Classes["SiblingAdded"] = Signal.new()
+	Parent.ChildAdded:Connect(function(...): {Instance?}
+		Classes.SiblingAdded:Fire(...)
+	end)
+	Parent.ChildRemoved:Connect(function(...): {Instance?}
+		Classes.SiblingRemoved:Fire(...)
+	end)
 	function Classes:WaitForChildWhichIsA(className, timeOut)
 		local defaultTimeOut = 5
 		if not timeOut then
@@ -104,8 +118,23 @@ function API:Register(i : Instance)
 		end
 		return descendants
 	end
-	function Classes:FindFirstDescendant(name : string)
+	function Classes:FindFirstDescendant(name : string) : Instance?
 		return i:FindFirstChild(name, true)
+	end
+	function Classes:FindFirstSibling(name: string): Instance?
+		return (Parent and Parent:FindFirstChild(name))
+	end
+	function Classes:FindFirstSiblingOfClass(class: string): Instance?
+		return (Parent and Parent:FindFirstChildOfClass(class))
+	end
+	function Classes:FindFirstSiblingWhichIsA(className: string): Instance?
+		return (Parent and Parent:FindFirstChildWhichIsA(className))
+	end
+	function Classes:GetSiblings()
+		return (Parent and Parent:GetChildren())
+	end
+	function Classes:IsSiblingOf(sibling: Instance): boolean
+		return (Parent == sibling.Parent)
 	end
 	return Classes
 end
