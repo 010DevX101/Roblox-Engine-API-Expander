@@ -108,19 +108,6 @@ function API:Register(i : Instance)
 		end
 		return descendantsWhichAre
 	end
-	function Classes:GetDescendants()
-		local descendants = {}
-		for _,child in pairs(i:GetChildren()) do
-			table.insert(descendants, child)
-			for _,descendant in pairs(child:GetDescendants()) do
-				table.insert(descendants, descendant)
-			end
-		end
-		return descendants
-	end
-	function Classes:FindFirstDescendant(name : string) : Instance?
-		return i:FindFirstChild(name, true)
-	end
 	function Classes:FindFirstSibling(name: string): Instance?
 		return (Parent and Parent:FindFirstChild(name))
 	end
