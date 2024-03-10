@@ -10,13 +10,18 @@ Now methods can be called directly from instances instead of having to pass the 
 Get the module from the following link: https://create.roblox.com/store/asset/16611623974
 
 ## Features
-- `WaitForChildWhichIsA` method.
-- `GetDescendantsWhichAre` method.
-- `GetDescendantsOfClass` method.
-- `GetChildrenOfClass` method.
-- `GetChildrenWhichAre` method.
-- `FindFirstDescendant` method **(Should only be used if `FindFirstDescendant` gets disabled)**.
-- `GetDescendants` method **(Should only be used if `GetDescendants` gets disabled)**.
+* `WaitForChildWhichIsA` method.
+* `GetDescendantsWhichAre` method.
+* `GetDescendantsOfClass` method.
+* `GetChildrenOfClass` method.
+* `GetChildrenWhichAre` method.
+- `FindFirstSibing` method.
+- `IsSiblingOf` method.
+- `FindFirstSiblingWhichIsA` method.
+- `FindFirstSiblingOfClass` method.
+- `GetSiblings` method.
+- `.SiblingRemoved` signal.
+- `.SiblingAdded` signal.
 
 ## Usage
 Check the Examples folder for more information on how to use the functions provided.
