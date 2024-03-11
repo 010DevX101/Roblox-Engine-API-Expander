@@ -15,7 +15,7 @@ Get the module from the following link: https://create.roblox.com/store/asset/16
 * `GetDescendantsOfClass` method.
 * `GetChildrenOfClass` method.
 * `GetChildrenWhichAre` method.
-- `FindFirstSibing` method.
+- `FindFirstSibling` method.
 - `IsSiblingOf` method.
 - `FindFirstSiblingWhichIsA` method.
 - `FindFirstSiblingOfClass` method.
