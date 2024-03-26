@@ -1,0 +1,8 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Instances = require(ReplicatedStorage.Instances)
+local Part = Instances:Register(workspace.Folder.Part)
+Part.Removing:Connect(function()
+	print("Part is being removed!")
+end)
+repeat task.wait() until Part.Removing:Wait()
+print("Part is being removed!")

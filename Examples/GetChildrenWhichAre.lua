@@ -1,4 +1,5 @@
-local Instances = require(script.Parent.Parent)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Instances = require(ReplicatedStorage.Instances)
 local workspace = Instances:Register(workspace)
 local BaseParts = workspace:GetChildrenWhichAre("BasePart")
 print(BaseParts)

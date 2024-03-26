@@ -1,33 +1,10 @@
 local API = {}
 
 local Signal = require(script.GoodSignal)
-local HttpService = game:GetService("HttpService")
-local Url = "https://raw.githubusercontent.com/MaximumADHD/Roblox-Client-Tracker/roblox/API-Dump.json"
+local Http = require(script.Http)
 
 function GetMembers(instance : Instance)
-	local members = {}
-	local success, result = pcall(HttpService.GetAsync, HttpService, Url)
-	if not success then
-		warn("HTTP requests are disabled.")
-		return
-	end
-	result = HttpService:JSONDecode(result)
-	for _,class in pairs(result.Classes) do
-		if class.Name ~= instance.ClassName and class.Name ~= "Instance" then
-			continue
-		end
-		for _,member in pairs(class.Members) do
-			if typeof(member.Tags) == "table" then
-				if table.find(member.Tags, "NotScriptable") or table.find(member.Tags, "Deprecated") then
-					continue
-				end
-			end
-			if member.Security == "None" or member.Security.Read == "None" or member.Security.Write == "None" then
-				table.insert(members, member)
-			end
-		end
-	end
-	return members
+	return Http:GetMembers(instance)
 end
 
 function API:Register(i : Instance)
@@ -46,22 +23,33 @@ function API:Register(i : Instance)
 			Classes[member.Name] = i[member.Name]
 		end
 	end
-	Classes["SiblingRemoved"] = Signal.new()
-	Classes["SiblingAdded"] = Signal.new()
-	Parent.ChildAdded:Connect(function(...): {Instance?}
-		Classes.SiblingAdded:Fire(...)
+	for _,child in pairs(i:GetChildren()) do
+		Classes[child.Name] = child
+	end
+	if Parent then
+		Classes["SiblingRemoved"] = Signal.new()
+		Classes["SiblingAdded"] = Signal.new()
+		Classes["Removing"] = Signal.new()
+		Parent.ChildAdded:Connect(function(...): {Instance?}
+			Classes.SiblingAdded:Fire(...)
+		end)
+		Parent.ChildRemoved:Connect(function(...): {Instance?}
+			Classes.SiblingRemoved:Fire(...)
+		end)
+	end
+	i.AncestryChanged:Connect(function(self, newParent) : {Instance?}
+		if newParent == nil then
+			Classes.Removing:Fire()
+		end
 	end)
-	Parent.ChildRemoved:Connect(function(...): {Instance?}
-		Classes.SiblingRemoved:Fire(...)
-	end)
-	function Classes:WaitForChildWhichIsA(className, timeOut)
+	function Classes:WaitForChildWhichIsA(className, timeOut) : Instance? | nil
 		local defaultTimeOut = 5
 		if not timeOut then
 			timeOut = defaultTimeOut
 		end
 		while task.wait(1) do
 			if timeOut <= 0 then
-				warn("Infinite yield possible on " .. "'" .. i.Name .. ':WaitForChildWhichIsA("' .. className .. '")' .. "'")
+				warn(`Infinite yield possible on '{i.Name}:WaitForChildWhichIsA("{className}")'`)
 				return nil
 			end
 			for _,inst in pairs(i:GetChildren()) do
@@ -72,7 +60,7 @@ function API:Register(i : Instance)
 			timeOut -= 1
 		end
 	end
-	function Classes:GetChildrenOfClass(className : string)
+	function Classes:GetChildrenOfClass(className : string) : {Instance?}
 		local instancesOfClass = {}
 		for _,child in pairs(i:GetChildren()) do
 			if child.ClassName == className then
@@ -81,7 +69,7 @@ function API:Register(i : Instance)
 		end
 		return instancesOfClass
 	end
-	function Classes:GetDescendantsOfClass(className : string)
+	function Classes:GetDescendantsOfClass(className : string) : {Instance?}
 		local descendantsOfClass = {}
 		for _,descendant in pairs(i:GetDescendants()) do
 			if descendant.ClassName == className then
@@ -90,7 +78,7 @@ function API:Register(i : Instance)
 		end
 		return descendantsOfClass
 	end
-	function Classes:GetChildrenWhichAre(t : string)
+	function Classes:GetChildrenWhichAre(t : string) : {Instance?}
 		local instancesWhichAre = {}
 		for _,child in pairs(i:GetChildren()) do
 			if child:IsA(t) then
@@ -99,7 +87,7 @@ function API:Register(i : Instance)
 		end
 		return instancesWhichAre
 	end
-	function Classes:GetDescendantsWhichAre(t : string)
+	function Classes:GetDescendantsWhichAre(t : string) : {Instance?}
 		local descendantsWhichAre = {}
 		for _,descendant in pairs(i:GetDescendants()) do
 			if descendant:IsA(t) then
@@ -117,7 +105,7 @@ function API:Register(i : Instance)
 	function Classes:FindFirstSiblingWhichIsA(className: string): Instance?
 		return (Parent and Parent:FindFirstChildWhichIsA(className))
 	end
-	function Classes:GetSiblings()
+	function Classes:GetSiblings(): {Instance}
 		return (Parent and Parent:GetChildren())
 	end
 	function Classes:IsSiblingOf(sibling: Instance): boolean

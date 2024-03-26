@@ -1,4 +1,5 @@
-local Instances = require(script.Parent.Parent)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Instances = require(ReplicatedStorage.Instances)
 local Camera = Instances:Register(workspace.Camera)
 Camera.SiblingAdded:Connect(function(sibling)
 	print(sibling)
