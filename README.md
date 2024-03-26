@@ -22,6 +22,7 @@ Get the module from the following link: https://create.roblox.com/store/asset/16
 - `GetSiblings` method.
 - `.SiblingRemoved` signal.
 - `.SiblingAdded` signal.
+- `.Removing` signal.
 
 ## Usage
 Check the Examples folder for more information on how to use the functions provided.
