@@ -1,117 +1,200 @@
-local API = {}
+local Signal = require(script.Signal)
+local Tree = require(script.Tree)
+local Trove = require(script.Trove)
 
-local Signal = require(script.GoodSignal)
-local Http = require(script.Http)
+type APIExpanderImpl = {
+	__index: APIExpanderImpl,
+	new: <T>(instance: T) -> APIExpander & T,
+	WaitForChildWhichIsA: (self: APIExpander, className: string, timeOut: number) -> Instance,
+	GetChildrenOfClass: (self: APIExpander, className: string) -> { Instance },
+	GetDescendantsOfClass: (self: APIExpander, className: string) -> { Instance },
+	GetChildrenWhichAre: (self: APIExpander, className: string) -> { Instance },
+	GetDescendantsWhichAre: (self: APIExpander, className: string) -> { Instance },
+	FindFirstSibling: (self: APIExpander, name: string) -> Instance?,
+	FindFirstSiblingOfClass: (self: APIExpander, className: string) -> Instance?,
+	FindFirstSiblingWhichIsA: (self: APIExpander, className: string) -> Instance?,
+	GetSiblings: (self: APIExpander) -> { Instance },
+	GetSiblingsWhichAre: (self: APIExpander, className: string) -> { Instance },
+	IsSiblingOf: (self: APIExpander, instance: Instance) -> boolean,
+	Find: (self: APIExpander, pathToInstance: string, assertIsA: string) -> Instance?,
+	Await: (self: APIExpander, pathToInstance: string, timeOut: number, assertIsA: string) -> Instance,
+	Exists: (self: APIExpander, pathToInstance: string, assertIsA: string) -> boolean,
+	_destroy: (self: APIExpander) -> nil,
+}
 
-function GetMembers(instance : Instance)
-	return Http:GetMembers(instance)
-end
+type APIExpanderProperties = {
+	Instance: Instance,
+	_trove: typeof(Trove.new()),
+	SiblingAdded: RBXScriptConnection,
+	SiblingRemoved: RBXScriptConnection,
+}
+type APIExpander = typeof(setmetatable({} :: APIExpanderProperties, {} :: APIExpanderImpl))
 
-function API:Register(i : Instance)
-	local Classes = {}
-	local Parent : Instance? = i.Parent
-	local Members = GetMembers(i)
-	if not Members then
-		return Classes
+local Expand: APIExpanderImpl = {} :: APIExpanderImpl
+Expand.__index = function(self, key)
+	if Expand[key] then
+		return Expand[key]
 	end
-	for _,member in pairs(Members) do
-		if member.MemberType == "Function" then
-			Classes[member.Name] = function(self, ...)
-				return i[member.Name](i, ...)
-			end
-		elseif member.MemberType == "Property" or member.MemberType == "Event" then
-			Classes[member.Name] = i[member.Name]
+
+	if not self.Instance[key] then
+		error(`Attempt to index {self.Instance} with key {key} that does not exist`)
+	end
+
+	if typeof(self.Instance[key]) == "function" then
+		return function(self, ...)
+			return (self.Instance[key] :: (any) -> ())(self.Instance, ...)
 		end
 	end
-	for _,child in pairs(i:GetChildren()) do
-		Classes[child.Name] = child
-	end
-	if Parent then
-		Classes["SiblingRemoved"] = Signal.new()
-		Classes["SiblingAdded"] = Signal.new()
-		Classes["Removing"] = Signal.new()
-		Parent.ChildAdded:Connect(function(...): {Instance?}
-			Classes.SiblingAdded:Fire(...)
-		end)
-		Parent.ChildRemoved:Connect(function(...): {Instance?}
-			Classes.SiblingRemoved:Fire(...)
-		end)
-	end
-	i.AncestryChanged:Connect(function(self, newParent) : {Instance?}
-		if newParent == nil then
-			Classes.Removing:Fire()
-		end
+	return self.Instance[key]
+end :: any
+
+function Expand.new<T>(instance)
+	local self = setmetatable({}, Expand)
+
+	self.Instance = instance
+	self._trove = Trove.new()
+	self.SiblingAdded = self._trove:Add(Signal.new())
+	self.SiblingRemoved = self._trove:Add(Signal.new())
+	self.Instance.Destroying:Connect(function()
+		self:Destroy()
 	end)
-	function Classes:WaitForChildWhichIsA(className, timeOut) : Instance? | nil
-		local defaultTimeOut = 5
-		if not timeOut then
-			timeOut = defaultTimeOut
-		end
-		while task.wait(1) do
-			if timeOut <= 0 then
-				warn(`Infinite yield possible on '{i.Name}:WaitForChildWhichIsA("{className}")'`)
-				return nil
-			end
-			for _,inst in pairs(i:GetChildren()) do
-				if inst:IsA(className) then
-					return inst
-				end
-			end
-			timeOut -= 1
-		end
+
+	local parent = self.Instance.Parent
+	if parent then
+		self.SiblingAdded = Signal.new()
+		self.SiblingRemoved = Signal.new()
+
+		self._trove:Add(parent.ChildAdded:Connect(function(child)
+			self.SiblingAdded:Fire(child)
+		end))
+
+		self._trove:Add(parent.ChildRemoved:Connect(function(child)
+			self.SiblingRemoved:Fire(child)
+		end))
 	end
-	function Classes:GetChildrenOfClass(className : string) : {Instance?}
-		local instancesOfClass = {}
-		for _,child in pairs(i:GetChildren()) do
-			if child.ClassName == className then
-				table.insert(instancesOfClass, child)
-			end
-		end
-		return instancesOfClass
-	end
-	function Classes:GetDescendantsOfClass(className : string) : {Instance?}
-		local descendantsOfClass = {}
-		for _,descendant in pairs(i:GetDescendants()) do
-			if descendant.ClassName == className then
-				table.insert(descendantsOfClass, descendant)
-			end
-		end
-		return descendantsOfClass
-	end
-	function Classes:GetChildrenWhichAre(t : string) : {Instance?}
-		local instancesWhichAre = {}
-		for _,child in pairs(i:GetChildren()) do
-			if child:IsA(t) then
-				table.insert(instancesWhichAre, child)
-			end
-		end
-		return instancesWhichAre
-	end
-	function Classes:GetDescendantsWhichAre(t : string) : {Instance?}
-		local descendantsWhichAre = {}
-		for _,descendant in pairs(i:GetDescendants()) do
-			if descendant:IsA(t) then
-				table.insert(descendantsWhichAre, descendant)
-			end
-		end
-		return descendantsWhichAre
-	end
-	function Classes:FindFirstSibling(name: string): Instance?
-		return (Parent and Parent:FindFirstChild(name))
-	end
-	function Classes:FindFirstSiblingOfClass(class: string): Instance?
-		return (Parent and Parent:FindFirstChildOfClass(class))
-	end
-	function Classes:FindFirstSiblingWhichIsA(className: string): Instance?
-		return (Parent and Parent:FindFirstChildWhichIsA(className))
-	end
-	function Classes:GetSiblings(): {Instance}
-		return (Parent and Parent:GetChildren())
-	end
-	function Classes:IsSiblingOf(sibling: Instance): boolean
-		return (Parent == sibling.Parent)
-	end
-	return Classes
+
+	return self
 end
 
-return API
+function Expand:WaitForChildWhichIsA(className, timeOut)
+	timeOut = timeOut or 5
+	while task.wait(1) do
+		if timeOut <= 0 then
+			warn(
+				"Infinite yield possible on "
+					.. "'"
+					.. self.Instance.Name
+					.. ':WaitForChildWhichIsA("'
+					.. className
+					.. '")'
+					.. "'"
+			)
+			return nil
+		end
+
+		for _, instance in self.Instance:GetChildren() do
+			if instance:IsA(className) then
+				return instance
+			end
+		end
+		timeOut -= 1
+	end
+
+	return nil
+end
+
+function Expand:GetChildrenOfClass(className)
+	local children = {}
+	for _, instance in self.Instance:GetChildren() do
+		if instance:IsA(className) then
+			table.insert(children, instance)
+		end
+	end
+	return children
+end
+
+function Expand:GetDescendantsOfClass(className)
+	local descendants = {}
+	for _, descendant in self.Instance:GetChildren() do
+		if descendant:IsA(className) then
+			table.insert(descendants, descendant)
+		end
+	end
+	return descendants
+end
+
+function Expand:GetChildrenWhichAre(className)
+	local children = {}
+	for _, instance in self.Instance:GetChildren() do
+		if instance:IsA(className) then
+			table.insert(children, instance)
+		end
+	end
+	return children
+end
+
+function Expand:GetDescendantsWhichAre(className)
+	local descendants = {}
+	for _, descendant in self.Instance:GetDescendants() do
+		if descendant:IsA(className) then
+			table.insert(descendants, descendant)
+		end
+	end
+	return descendants
+end
+
+function Expand:GetSiblingsWhichAre(className)
+	if not self.Instance.Parent then
+		return nil
+	end
+	local siblings = {}
+	for _, sibling in self.Instance.Parent:GetChildren() do
+		if sibling:IsA(className) then
+			table.insert(siblings, sibling)
+		end
+	end
+	return siblings
+end
+
+function Expand:FindFirstSibling(name)
+	return (self.Instance.Parent and self.Instance.Parent:FindFirstChild(name)) or nil
+end
+
+function Expand:FindFirstSiblingOfClass(className)
+	return (self.Instance.Parent and self.Instance.Parent:FindFirstChildOfClass(className)) or nil
+end
+
+function Expand:FindFirstSiblingWhichIsA(className)
+	return (self.Instance.Parent and self.Instance.Parent:FindFirstChildWhichIsA(className)) or nil
+end
+
+function Expand:GetSiblings()
+	return (self.Instance.Parent and self.Instance.Parent:GetChildren())
+end
+
+function Expand:IsSiblingOf(sibling)
+	return (self.Instance.Parent == sibling.Parent)
+end
+
+function Expand:Find(pathToInstance, assertIsA)
+	return Tree.Find(self.Instance, pathToInstance, assertIsA)
+end
+
+function Expand:Await(pathToInstance, timeOut, assertIsA)
+	return Tree.Await(self.Instance, pathToInstance, timeOut, assertIsA)
+end
+
+function Expand:Exists(pathToInstance, assertIsA)
+	return Tree.Exists(self.Instance, pathToInstance, assertIsA)
+end
+
+function Expand:_destroy()
+	self._trove:Destroy()
+	setmetatable(self, nil)
+	table.clear(self)
+	self = nil
+end
+
+return {
+	Register = Expand.new
+}
