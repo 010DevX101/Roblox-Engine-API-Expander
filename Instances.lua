@@ -115,7 +115,7 @@ end
 
 function Expand:GetDescendantsOfClass(className)
 	local descendants = {}
-	for _, descendant in self.Instance:GetChildren() do
+	for _, descendant in self.Instance:GetDescendants() do
 		if descendant:IsA(className) then
 			table.insert(descendants, descendant)
 		end
