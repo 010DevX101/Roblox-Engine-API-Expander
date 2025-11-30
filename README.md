@@ -6,6 +6,9 @@
 <br>
 Now methods can be called directly from instances instead of having to pass the instance as a parameter to the method. Adds new functions to the Roblox engine API that can be used in all instances.
 
+## ⚠️ Archival Notice ⚠️
+This package will no longer be maintained and thus, is archived.
+
 ## Install
 Get the module from the following link: https://create.roblox.com/store/asset/16611623974
 
